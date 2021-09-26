@@ -17,7 +17,7 @@ interface ApiService {
     suspend fun form(@Field("title") title: String, @Field("diff") diff: String): JsonObject
 
     @Headers("Authorization: Bearer e42ed4a6-f346-4f0b-ad49-02c66dcca91a")
-    @POST("post")
+    @POST("https://run.mocky.io/v3/3326a4c7-370d-4f82-8b72-7a7cda85524d")
     suspend fun post(@Body hashMapOf: Any): JsonObject
 
     @Headers("Authorization: Bearer e42ed4a6-f346-4f0b-ad49-02c66dcca91a")

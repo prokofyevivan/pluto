@@ -1,13 +1,22 @@
 package com.mocklets.pluto.modules.network.ui
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.mocklets.pluto.R
+import com.mocklets.pluto.core.extensions.color
+import com.mocklets.pluto.core.ui.spannable.createSpan
 import com.mocklets.pluto.modules.network.ApiCallData
 import com.mocklets.pluto.modules.network.NetworkCallsRepo
+import com.mocklets.pluto.modules.network.ResponseData
+import com.mocklets.pluto.modules.network.beautifyHeaders
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-internal class NetworkViewModel : ViewModel() {
+internal class NetworkViewModel(application: Application) : AndroidViewModel(application) {
 
     val apiCalls: LiveData<List<ApiCallData>>
         get() = NetworkCallsRepo.apiCalls
@@ -28,9 +37,13 @@ internal class NetworkViewModel : ViewModel() {
         }
     }
 
-    private fun combineData(apiCallLD: MutableLiveData<ApiCallData>, searchLD: MutableLiveData<String>) {
+    private fun combineData(apiCallLD: LiveData<ApiCallData>, searchLD: LiveData<String>) {
         apiCallLD.value?.let {
-            _detailContentLiveData.postValue(DetailContentData(it, searchLD.value))
+            viewModelScope.launch(Dispatchers.Default) {
+                var formattedResponse: FormatterResponse? = null
+                it.response?.let { response -> formattedResponse = formatResponse(response, searchLD.value) }
+                _detailContentLiveData.postValue(DetailContentData(it, searchLD.value, formattedResponse))
+            }
         }
     }
 
@@ -41,9 +54,36 @@ internal class NetworkViewModel : ViewModel() {
     fun searchContent(it: String) {
         _contentSearch.postValue(it.trim())
     }
+
+    private fun formatResponse(data: ResponseData, search: String?): FormatterResponse {
+        val context = getApplication<Application>().applicationContext
+        var header: CharSequence? = null
+        var body: CharSequence? = null
+        context.beautifyHeaders(data.headers)?.let { header = context.createSpan { append(highlight(it, search)) } }
+
+        data.body?.let {
+            if (it.isValid) {
+                body = context.createSpan {
+                    if (it.isBinary) {
+                        append(fontColor(italic("${it.body}"), context.color(R.color.pluto___text_dark_60)))
+                    } else {
+                        append(highlight("${it.body}", search))
+                    }
+                }
+            }
+        }
+        return FormatterResponse(data, header, body)
+    }
 }
 
 internal data class DetailContentData(
     val api: ApiCallData,
-    val search: String?
+    val search: String?,
+    val formatterResponse: FormatterResponse?
+)
+
+internal data class FormatterResponse(
+    val data: ResponseData,
+    val header: CharSequence?,
+    val body: CharSequence?
 )

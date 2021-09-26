@@ -16,7 +16,6 @@ import com.mocklets.pluto.databinding.PlutoFragmentNetworkDetailsResponseBinding
 import com.mocklets.pluto.modules.exceptions.ExceptionData
 import com.mocklets.pluto.modules.exceptions.ui.holder.CrashItemDetailsHeaderHolder
 import com.mocklets.pluto.modules.network.ResponseData
-import com.mocklets.pluto.modules.network.beautifyHeaders
 import com.mocklets.pluto.modules.network.ui.DetailContentData
 import com.mocklets.pluto.modules.network.ui.NetworkViewModel
 
@@ -38,7 +37,7 @@ internal class NetworkDetailsResponseFragment : Fragment(R.layout.pluto___fragme
 
     private val apiCallObserver = Observer<DetailContentData> {
         when {
-            it.api.response != null -> updateResponse(it.api.response!!, it.search)
+            it.api.response != null -> updateResponse(it.api.response!!, it.formatterResponse?.body, it.formatterResponse?.header)
             it.api.exception != null -> updateException(it.api.exception!!, it.search)
             else -> updateWaiting()
         }
@@ -59,7 +58,7 @@ internal class NetworkDetailsResponseFragment : Fragment(R.layout.pluto___fragme
         binding.bodyGroup.visibility = GONE
     }
 
-    private fun updateResponse(data: ResponseData, search: String?) {
+    private fun updateResponse(data: ResponseData, body: CharSequence?, header: CharSequence?) {
         binding.waiting.visibility = GONE
         binding.headerGroup.visibility = VISIBLE
         binding.bodyGroup.visibility = GONE
@@ -69,22 +68,16 @@ internal class NetworkDetailsResponseFragment : Fragment(R.layout.pluto___fragme
                 append(context.getString(R.string.pluto___headers_title))
                 append(fontColor(" (${data.headers.size})", context.color(R.color.pluto___text_dark_40)))
             }
-            context?.beautifyHeaders(data.headers)?.let { binding.headers.setSpan { append(highlight(it, search)) } }
+            binding.headers.text = header
         }
-        setBody(data, search)
+        setBody(data, body)
     }
 
-    private fun setBody(data: ResponseData, search: String?) {
+    private fun setBody(data: ResponseData, body: CharSequence?) {
         data.body?.let {
             if (it.isValid) {
                 binding.bodyGroup.visibility = VISIBLE
-                binding.body.setSpan {
-                    if (it.isBinary) {
-                        append(fontColor(italic("${it.body}"), context.color(R.color.pluto___text_dark_60)))
-                    } else {
-                        append(highlight("${it.body}", search))
-                    }
-                }
+                binding.body.text = body
             }
         }
     }
